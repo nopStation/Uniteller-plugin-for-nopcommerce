@@ -20,6 +20,7 @@ using Nop.Services.Localization;
 using Nop.Services.Payments;
 using Nop.Web.Framework;
 using System.Threading.Tasks;
+using Nop.Services.Orders;
 
 namespace Nop.Plugin.Payments.Uniteller
 {
@@ -37,6 +38,8 @@ namespace Nop.Plugin.Payments.Uniteller
         private readonly IWebHelper _webHelper;
         private readonly CurrencySettings _currencySettings;
         private readonly UnitellerPaymentSettings _unitellerPaymentSettings;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IOrderTotalCalculationService _orderTotalCalculationService;
 
         private const string UNITELLER_URL = "https://wpay.uniteller.ru/pay/";
         private const string UNITELLER_RESULTS_URL = "https://wpay.uniteller.ru/results/";
@@ -53,7 +56,9 @@ namespace Nop.Plugin.Payments.Uniteller
             ISettingService settingService,
             IWebHelper webHelper,
             CurrencySettings currencySettings,
-            UnitellerPaymentSettings unitellerPaymentSettings)
+            UnitellerPaymentSettings unitellerPaymentSettings,
+            IHttpContextAccessor httpContextAccessor, 
+            IOrderTotalCalculationService orderTotalCalculationService)
         {
             this._currencyService = currencyService;
             this._localizationService = localizationService;
@@ -62,6 +67,8 @@ namespace Nop.Plugin.Payments.Uniteller
             this._webHelper = webHelper;
             this._currencySettings = currencySettings;
             this._unitellerPaymentSettings = unitellerPaymentSettings;
+            _httpContextAccessor = httpContextAccessor;
+            _orderTotalCalculationService = orderTotalCalculationService;
         }
 
         #endregion
@@ -92,7 +99,7 @@ namespace Nop.Plugin.Payments.Uniteller
             var customerIdp = customerId.ToString();
 
             //create and send post data
-            var post = new RemotePost
+            var post = new RemotePost(_httpContextAccessor,_webHelper)
             {
                 FormName = "PayPoint",
                 Url = UNITELLER_URL
@@ -213,7 +220,7 @@ namespace Nop.Plugin.Payments.Uniteller
         /// <returns>Additional handling fee</returns>
         public  async Task<decimal> GetAdditionalHandlingFeeAsync(IList<ShoppingCartItem> cart)
         {
-            var result = await _paymentService.CalculateAdditionalFeeAsync(cart,
+            var result = await _orderTotalCalculationService.CalculatePaymentAdditionalFeeAsync(cart,
                 _unitellerPaymentSettings.AdditionalFee, _unitellerPaymentSettings.AdditionalFeePercentage);
 
             return result;
